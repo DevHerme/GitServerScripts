@@ -1,100 +1,100 @@
-# CI/CD Project Overview
+# GitServerScripts – Local Server Tools
 
-This repository contains scripts and configurations for a **local development workflow** and a **live deployment workflow**, designed to handle versioning, branching, and zero-downtime deployment (blue-green).
+This folder contains PowerShell scripts for managing feature development, version-controlled releases, and branch workflows in a Git-based CI/CD pipeline. These scripts are designed to be used in a **developer's local environment**.
 
-## Repository Structure
+---
 
-ci-cd/ 
-├── local-server/ 
-│ ├── abandon-branch.ps1 
-│ ├── commit.ps1 
-│ ├── common.ps1 
-│ ├── project-config.json 
-│ ├── release.ps1 
-│ ├── rename-branch.ps1 
-│ ├── start-bugfix.ps1 
-│ ├── start-feature.ps1 
-│ ├── start-hotfix.ps1 
-│ ├── switch-branch.ps1 (optional) 
-│ └── README.md (optional, referencing the root README) 
-└── live-server/ 
-    ├── new-release.ps1 (or webhook-listener.js) 
-    ├── rollback-live.ps1 
-    ├── skip-deployment.ps1 
-    ├── foundry-live-log.txt
-    └── README.md (optional, referencing the root README)
+## Contents
 
-    
-## Local Server Scripts
+```
+local-server/
+├── abandon-branch.ps1       # Rename and deprecate a feature branch
+├── commit.ps1               # Stage, commit, and push all local changes
+├── common.ps1               # Shared helper functions (e.g., branch switching, config loading)
+├── project-config.json      # Local configuration: project path, stable branch, project name
+├── release.ps1              # Version bump, merge to stable, push + tag
+├── rename-branch.ps1        # Rename a branch and update remote
+├── start-feature.ps1        # Create a new versioned feature branch
+├── start-bugfix.ps1         # Create a new versioned bugfix branch
+├── start-hotfix.ps1         # Create a new versioned hotfix branch
+├── switch-branch.ps1        # (Optional) Interactive branch switcher
+└── README.md                # You're here
+```
 
-- **Branch Creation**  
-  - `start-feature.ps1`: Creates a new feature branch using the current version (e.g., `v1.2.3/feature/xyz`), prompting to commit any uncommitted changes.  
-  - `start-bugfix.ps1` / `start-hotfix.ps1`: Similar to `start-feature`, but for bugfix/hotfix branches.
+---
 
-- **Commit & Release**  
-  - `commit.ps1`: Quickly stages, commits, and pushes all changes with a user-provided message (including guidelines for describing changes and database updates).  
-  - `release.ps1`: Merges the current branch into the stable branch, bumps the version (major, minor, or patch), updates the `VERSION` file, tags the release, and pushes to remote.
+## Setup
 
-- **Branch Management**  
-  - `abandon-branch.ps1`: Renames the current branch to a `deprecated/` prefix (e.g., `v1.2.3/deprecated/feature/xyz`), deleting the old remote reference so it’s effectively abandoned.  
-  - `rename-branch.ps1`: Renames the current branch (e.g., from `v1.2.3/feature/old-name` to `v1.2.3/feature/new-name`), removing the old remote branch reference and pushing the new one.  
-  - `switch-branch.ps1` (optional): Lists all available branches (stable, feature, bugfix, hotfix, deprecated) and prompts you to select one to switch to.
+1. **Configure `project-config.json`**
 
-- **Shared Helpers**  
-  - `common.ps1`: Contains helper functions (like loading `project-config.json`, handling uncommitted changes, switching branches, and creating/pushing new branches).
+```json
+{
+  "projectName": "Foundry",
+  "stableBranch": "main",
+  "projectPath": "C:/Website/Foundry"
+}
+```
 
-- **Configuration**  
-  - `project-config.json`: Defines your `projectName`, `stableBranch` (usually `main`), and `projectPath` (the local path to the Git repository).
+2. **Add a `version.txt` file to your root project folder**
+```
+v0.1.0
+```
 
-## Live Server Scripts
+---
 
-- **Deployment**  
-  - `webhook-listener.js` or `new-release.ps1`: Listens for GitHub webhooks (pushes to `main` or new tags), pulls the latest code, installs dependencies, builds, and spins up a new environment.  
-  - If health checks pass, traffic is switched to the new environment (blue-green deployment).
+## Script Usage
 
-- **Rollback & Skipping**  
-  - `rollback-live.ps1`: Instantly reverts traffic to the old environment if the new one fails.  
-  - `skip-deployment.ps1`: Prevents repeated deployment attempts if a particular release is failing.
+### 1. Start a Feature, Bugfix, or Hotfix Branch
+Each of these scripts prompts for a name and creates a branch with the format `vX.Y.Z/type/your-description`.
 
-- **Logs**  
-  - `foundry-live-log.txt`: Stores deployment steps and errors for troubleshooting.
+```powershell
+./start-feature.ps1
+./start-bugfix.ps1
+./start-hotfix.ps1
+```
 
-## Usage & Testing
+### 2. Commit Changes
+```powershell
+./commit.ps1
+```
+- Prompts for commit message
+- Stages and pushes changes
 
-1. **Configure**  
-   - In `local-server/project-config.json`, set `stableBranch` (e.g., `main`) and `projectPath` to your local Git repo location.  
-   - Ensure there’s a `VERSION` file in the repo root (e.g., `v0.1.0`).
+### 3. Release the Branch
+```powershell
+./release.ps1
+```
+- Checks for uncommitted changes and shows a preview
+- Prompts for version bump type (major/minor/patch)
+- Merges into stable branch
+- Updates `version.txt` and creates a Git tag
+- Pushes to remote
 
-2. **Local Workflow**  
-   - **Create Branches**:  
-     - `.\start-feature.ps1` → Creates `vX.Y.Z/feature/YourFeature`.  
-     - `.\start-bugfix.ps1` → Creates `vX.Y.Z/bugfix/YourBug`.  
-   - **Commit** changes frequently with `.\commit.ps1`.  
-   - **Release**:  
-     - `.\release.ps1` merges your branch into stable, bumps version, tags, and pushes.
+### 4. Manage or Cleanup Branches
+```powershell
+./abandon-branch.ps1    # Deprecate current branch
+./rename-branch.ps1     # Rename local + remote branch
+./switch-branch.ps1     # (Optional) Browse and checkout remote branches
+```
 
-3. **Live Deployment**  
-   - A webhook or manual trigger detects new commits/tags on stable (`main`).  
-   - The deployment script (Node or PowerShell) pulls the latest, builds, and updates the live environment.  
-   - If deployment fails, logs are updated, and a rollback can be triggered if needed.
+---
 
-4. **Branch Management**  
-   - **Abandon**: `.\abandon-branch.ps1` to rename the current branch to a `deprecated/` prefix.  
-   - **Rename**: `.\rename-branch.ps1` to rename your branch on both local and remote.  
-   - **Switch**: `.\switch-branch.ps1` to select a branch from a list (optional).
+## Best Practices
 
-5. **Further Enhancements**  
-   - Integrate a Node.js or Python webhook listener for automated deployments.  
-   - Use Liquibase or a similar tool for DB migrations with rollback scripts.  
-   - Add email alerts for deployment failures.
+- Run all scripts from **PowerShell**, not Git Bash.
+- Keep `version.txt` up to date with `release.ps1`.
+- Commit frequently and push before using release scripts.
+- Avoid using `master` or `main` directly—always branch.
 
-## Recommendations
+---
 
-- **Test** all scripts on a dummy or staging repository first.  
-- **Document** any environment variables or secrets needed for production.  
-- **Iterate**: Add advanced features (like beta deployments or partial auto-retry) after the core pipeline is stable.
+## Notes
+- Designed to work alongside the `live-server/` folder (deployed separately).
+- All scripts are safe to run independently—they handle path switching and config resolution internally.
 
-## License & Contributions
+---
 
-- This setup is intended for personal or small-team projects but can be adapted for enterprise-level CI/CD.  
-- Feel free to fork or modify the scripts to suit your needs. Pull requests and suggestions are welcome.
+## See Also
+- [../live-server/README.md](../live-server/README.md) – Deployment, rollback, and webhook automation scripts.
+- [../README.md](../README.md) – Project-wide CI/CD structure and overview.
+
